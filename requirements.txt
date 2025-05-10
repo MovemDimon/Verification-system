@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+requests
+pydantic
+web3
+ton-client-py
+sqlalchemy
+python-dotenv
