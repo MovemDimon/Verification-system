@@ -17,6 +17,15 @@ class NetworkEnum(str, Enum):
     OPT = 'Optimism'
     TON = 'TON'
 
+# نگاشت شبکه‌ها به متغیرهای ENV
+NETWORK_RPC_MAP = {
+    NetworkEnum.ETH: settings.EVM_RPC_URL_ETH,
+    NetworkEnum.BSC: settings.EVM_RPC_URL_BSC,
+    NetworkEnum.POLY: settings.EVM_RPC_URL_POLY,
+    NetworkEnum.ARB: settings.EVM_RPC_URL_ARB,
+    NetworkEnum.OPT: settings.EVM_RPC_URL_OPT
+}
+
 async def verify(payload: dict) -> dict:
     key = f"{payload['user_id']}_{payload['tx_hash']}"
     db = SessionLocal()
@@ -37,15 +46,22 @@ async def verify(payload: dict) -> dict:
     db.commit()
 
     try:
-        if payload['network'] in {NetworkEnum.ETH, NetworkEnum.BSC, NetworkEnum.POLY, NetworkEnum.ARB, NetworkEnum.OPT}:
+        if payload['network'] in NETWORK_RPC_MAP:
+            evm_rpc = NETWORK_RPC_MAP[payload['network']]
             ok = verify_evm_tx(
-                payload['tx_hash'], payload['sender_wallet'], float(payload['amount']),
-                settings.MERCHANT_WALLET_EVM, settings.TX_CONFIRMATIONS
+                tx_hash=payload['tx_hash'],
+                sender=payload['sender_wallet'],
+                amount_usdt=float(payload['amount']),
+                merchant=settings.MERCHANT_WALLET_EVM,
+                confirmations=settings.TX_CONFIRMATIONS,
+                rpc_url=evm_rpc
             )
         elif payload['network'] == NetworkEnum.TON:
             ok = verify_ton_tx(
-                payload['tx_hash'], payload['sender_wallet'], int(payload['amount']),
-                settings.MERCHANT_WALLET_TON
+                tx_hash=payload['tx_hash'],
+                sender=payload['sender_wallet'],
+                amount=int(payload['amount']),
+                merchant=settings.MERCHANT_WALLET_TON
             )
         else:
             raise HTTPException(status_code=400, detail='Unsupported network')
