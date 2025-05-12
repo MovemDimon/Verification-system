@@ -1,7 +1,9 @@
-import time
+import time, asyncio
 from web3 import Web3
+from web3.middleware import geth_poa_middleware
 from web3.exceptions import TransactionNotFound
-from app.config import settings
+from app.config import settings, get_working_rpc, get_ws_url
+import aioredis
 
 contract_abi = [
     {
@@ -16,14 +18,38 @@ contract_abi = [
     }
 ]
 
-def verify_evm_tx(tx_hash: str, sender: str, amount_usdt: float, merchant: str, confirmations: int, rpc_url: str) -> bool:
-    w3 = Web3(Web3.HTTPProvider(rpc_url))
-    contract = w3.eth.contract(
-        address=Web3.toChecksumAddress(settings.USDT_CONTRACT_EVM),
-        abi=contract_abi
+async def wait_for_transfer_ws(tx_hash: str, sender: str, merchant: str, timeout: int, network: str) -> bool:
+    """Subscribe to Transfer events via WebSocket."""
+    w3 = Web3(Web3.WebsocketProvider(get_ws_url(network)))
+    w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+    contract = w3.eth.contract(address=Web3.toChecksumAddress(settings.USDT_CONTRACT_EVM), abi=contract_abi)
+    event_filter = contract.events.Transfer.createFilter(
+        fromBlock="latest",
+        argument_filters={"from": sender, "to": merchant}
     )
+    start = time.time()
+    while time.time() - start < timeout:
+        entries = event_filter.get_new_entries()
+        for ev in entries:
+            if ev.transactionHash.hex() == tx_hash:
+                return True
+        await asyncio.sleep(1)
+    return False
 
-    amount_units = int(amount_usdt * 10**6)  # USDT has 6 decimals
+def verify_evm_tx(tx_hash: str, sender: str, amount_usdt: float, merchant: str, confirmations: int, network: str) -> bool:
+    """Atomic verification: first try WS subscription, fallback to HTTP polling."""
+    # Try WS-based first
+    try:
+        return asyncio.get_event_loop().run_until_complete(
+            wait_for_transfer_ws(tx_hash, sender, merchant, settings.TX_TIMEOUT_SECONDS, network)
+        )
+    except Exception:
+        pass
+
+    # Fallback to HTTP polling with failover
+    w3 = Web3(Web3.HTTPProvider(get_working_rpc(network)))
+    contract = w3.eth.contract(address=Web3.toChecksumAddress(settings.USDT_CONTRACT_EVM), abi=contract_abi)
+    amount_units = int(amount_usdt * 10**6)
     start = time.time()
     attempts = 0
 
@@ -34,13 +60,11 @@ def verify_evm_tx(tx_hash: str, sender: str, amount_usdt: float, merchant: str, 
         except TransactionNotFound:
             time.sleep(5)
             continue
-
         if receipt.status != 1:
             return False
         if w3.eth.blockNumber - receipt.blockNumber < confirmations:
             time.sleep(5)
             continue
-
         for log in receipt.logs:
             try:
                 ev = contract.events.Transfer().processLog(log)
@@ -52,7 +76,5 @@ def verify_evm_tx(tx_hash: str, sender: str, amount_usdt: float, merchant: str, 
                     return True
             except:
                 continue
-
         return False
-
     return False
