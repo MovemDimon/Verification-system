@@ -6,25 +6,31 @@ class Settings(BaseSettings):
     MERCHANT_WALLET_EVM: str
     MERCHANT_WALLET_TON: str
 
-    # RPC / API endpoints
-    EVM_RPC_URL: AnyUrl
+    # RPC URLs per EVM network
+    EVM_RPC_URL_ETH: AnyUrl
+    EVM_RPC_URL_BSC: AnyUrl
+    EVM_RPC_URL_POLY: AnyUrl
+    EVM_RPC_URL_ARB: AnyUrl
+    EVM_RPC_URL_OPT: AnyUrl
+
+    # TON
     TON_API_URL: AnyUrl
     TON_API_KEY: str
 
-    # Contract addresses
+    # Contracts
     USDT_CONTRACT_EVM: str
 
-    # WebSocket notification
+    # WebSocket
     WS_NOTIFY_URL: AnyUrl
 
-    # Transaction verification params
+    # Transaction verification
     TX_CONFIRMATIONS: int = 12
     TX_TIMEOUT_SECONDS: int = 300
 
-    # HTTP API auth
+    # API authentication
     API_KEY: str
 
-    # Database URL
+    # Database
     DATABASE_URL: str
 
     # Security
