@@ -6,12 +6,19 @@ class Settings(BaseSettings):
     MERCHANT_WALLET_EVM: str
     MERCHANT_WALLET_TON: str
 
-    # RPC URLs per EVM network
-    EVM_RPC_URL_ETH: AnyUrl
-    EVM_RPC_URL_BSC: AnyUrl
-    EVM_RPC_URL_POLY: AnyUrl
-    EVM_RPC_URL_ARB: AnyUrl
-    EVM_RPC_URL_OPT: AnyUrl
+    # RPC URLs per EVM network (comma-separated)
+    EVM_RPC_URL_ETH: str
+    EVM_RPC_URL_BSC: str
+    EVM_RPC_URL_POLY: str
+    EVM_RPC_URL_ARB: str
+    EVM_RPC_URL_OPT: str
+
+    # WebSocket URLs per EVM network
+    EVM_WS_URL_ETH: AnyUrl
+    EVM_WS_URL_BSC: AnyUrl
+    EVM_WS_URL_POLY: AnyUrl
+    EVM_WS_URL_ARB: AnyUrl
+    EVM_WS_URL_OPT: AnyUrl
 
     # TON
     TON_API_URL: AnyUrl
@@ -20,7 +27,7 @@ class Settings(BaseSettings):
     # Contracts
     USDT_CONTRACT_EVM: str
 
-    # WebSocket
+    # WebSocket notify
     WS_NOTIFY_URL: AnyUrl
 
     # Transaction verification
@@ -32,6 +39,9 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str
+
+    # Redis
+    REDIS_URL: AnyUrl
 
     # Security
     SECRET_KEY: str
@@ -52,3 +62,40 @@ class Settings(BaseSettings):
         return v
 
 settings = Settings()
+
+# Helper: split comma lists
+def _split(urls: str):
+    return [u.strip() for u in urls.split(",") if u.strip()]
+
+# Failover-aware RPC providers
+RPC_URLS = {
+    'Ethereum': _split(settings.EVM_RPC_URL_ETH),
+    'BSC':      _split(settings.EVM_RPC_URL_BSC),
+    'Polygon':  _split(settings.EVM_RPC_URL_POLY),
+    'Arbitrum': _split(settings.EVM_RPC_URL_ARB),
+    'Optimism': _split(settings.EVM_RPC_URL_OPT),
+}
+
+WS_URLS = {
+    'Ethereum': settings.EVM_WS_URL_ETH,
+    'BSC':      settings.EVM_WS_URL_BSC,
+    'Polygon':  settings.EVM_WS_URL_POLY,
+    'Arbitrum': settings.EVM_WS_URL_ARB,
+    'Optimism': settings.EVM_WS_URL_OPT,
+}
+
+def get_working_rpc(network: str) -> str:
+    from web3 import Web3
+    for url in RPC_URLS.get(network, []):
+        try:
+            if Web3(Web3.HTTPProvider(url)).isConnected():
+                return url
+        except:
+            continue
+    raise RuntimeError(f"No available RPC for {network}")
+
+def get_ws_url(network: str) -> str:
+    ws = WS_URLS.get(network)
+    if not ws:
+        raise ValueError(f"No WS URL for {network}")
+    return ws
