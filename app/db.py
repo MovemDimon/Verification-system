@@ -19,6 +19,7 @@ class TxStatus(enum.Enum):
 
 class Transaction(Base):
     __tablename__ = "transactions"
+
     id = Column(Integer, primary_key=True, index=True)
     idempotency_key = Column(String, unique=True, index=True)
     user_id = Column(String, index=True)
