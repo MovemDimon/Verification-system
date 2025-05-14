@@ -67,7 +67,6 @@ settings = Settings()
 def _split(urls: str):
     return [u.strip() for u in urls.split(",") if u.strip()]
 
-# Failover-aware RPC providers
 RPC_URLS = {
     'Ethereum': _split(settings.EVM_RPC_URL_ETH),
     'BSC':      _split(settings.EVM_RPC_URL_BSC),
