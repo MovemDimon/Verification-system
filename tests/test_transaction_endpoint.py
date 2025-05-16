@@ -22,6 +22,9 @@ def test_verify_endpoint_pending_and_idempotent():
     r1 = client.post("/api/v1/transaction",
                      json=payload,
                      headers={"X-API-KEY": "testkey"})
+
+    print(">>>", r1.status_code, r1.json()) 
+
     assert r1.status_code == 200
     assert r1.json()["status"] == "pending"
 
