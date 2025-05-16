@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv(dotenv_path=".env.test")
 from pydantic import BaseSettings, AnyUrl, validator
 import re
 
