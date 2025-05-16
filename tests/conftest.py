@@ -1,10 +1,14 @@
 # tests/conftest.py
-import os, sys, pytest
 
-# 1. اضافه کردن مسیر ریشه برای import app
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
+import os, sys
 
-# 2. تعریف یک دیکشنری از تمامی کلیدهای مورد نیاز و مقدار تستی‌شان
+# 1) مسیر ریشه را اضافه می‌کنیم برای import صحیح
+sys.path.insert(
+    0,
+    os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+)
+
+# 2) تمام ENVهای مورد نیاز را در top-level ست می‌کنیم
 DUMMY_ENV = {
     "MERCHANT_WALLET_EVM": "0x" + "0"*40,
     "MERCHANT_WALLET_TON":   "EQ" + "A"*48,
@@ -30,17 +34,15 @@ DUMMY_ENV = {
     "SECRET_KEY":            "secret",
 }
 
-# 3. Fixture سراسری که قبل از وارد کردن settings همه ENVها را می‌گذارد
-@pytest.fixture(autouse=True)
-def setup_test_env(monkeypatch):
-    for k, v in DUMMY_ENV.items():
-        monkeypatch.setenv(k, v)
-    yield
+for k, v in DUMMY_ENV.items():
+    os.environ.setdefault(k, v)
 
-# حالا می‌توانیم safe ایمپورت کنیم
+# 3) حالا که ENV ست شد، می‌توانیم settings را import کنیم
 from app.config import settings
 
-# اگر نیاز به fake_redis داریم:
+import pytest
+
+# 4) fixture برای fake Redis
 @pytest.fixture(autouse=True)
 def fake_redis(monkeypatch):
     import fakeredis
