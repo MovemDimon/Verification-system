@@ -10,7 +10,10 @@ from app.blockchain.evm_client import verify_evm_tx
 from app.blockchain.ton_client import verify_ton_tx
 
 logger = logging.getLogger(__name__)
-redis = aioredis.from_url(settings.REDIS_URL)
+
+# تابع تولید Redis – برای تست قابل override است
+def get_redis():
+    return aioredis.from_url(settings.REDIS_URL)
 
 class NetworkEnum(str, Enum):
     ETH = 'Ethereum'
@@ -21,18 +24,19 @@ class NetworkEnum(str, Enum):
     TON = 'TON'
 
 async def enqueue_verify(payload: dict):
-    """به‌جای اجرای مستقیم، بسته را به صف Redis بفرست."""
+    redis = get_redis()
     await redis.lpush("tx_queue", json.dumps(payload))
 
 async def get_cached(key: str):
+    redis = get_redis()
     return await redis.get(key)
 
 async def set_cached(key: str, value: str, ttl: int = 60):
+    redis = get_redis()
     await redis.set(key, value, ex=ttl)
 
 async def verify(payload: dict) -> dict:
     key = f"{payload['user_id']}_{payload['tx_hash']}"
-    # 1) کش
     cached = await get_cached(key)
     if cached:
         return json.loads(cached)
@@ -45,7 +49,6 @@ async def verify(payload: dict) -> dict:
             await set_cached(key, json.dumps(result))
             return result
 
-        # 2) ذخیره اولیه
         tx = Transaction(
             idempotency_key=key,
             user_id=payload['user_id'],
@@ -58,7 +61,6 @@ async def verify(payload: dict) -> dict:
         db.add(tx)
         db.commit()
 
-        # 3) enqueue و برگرداندن pending
         await enqueue_verify(payload)
         return {'status': 'pending', 'tx_hash': payload['tx_hash']}
     finally:
