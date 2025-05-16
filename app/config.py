@@ -1,5 +1,13 @@
+import os
 from dotenv import load_dotenv
-load_dotenv(dotenv_path=".env.test")
+
+# 🔹 تشخیص محیط و بارگذاری فایل مناسب
+if os.getenv("USE_TEST_ENV") == "1":
+    print("⚠️  [config] Loading TEST config from .env.test")
+    load_dotenv(dotenv_path=".env.test")
+else:
+    load_dotenv()  # بارگذاری از `.env` عادی یا متغیرهای محیطی
+
 from pydantic import BaseSettings, AnyUrl, validator
 import re
 
@@ -48,8 +56,9 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str
 
-    class Config:
-        env_file = ".env"
+    # ❌ حذف Config.env_file چون load_dotenv بالا کار رو انجام داده
+    # class Config:
+    #     env_file = ".env"
 
     @validator('MERCHANT_WALLET_EVM')
     def validate_evm_address(cls, v):
@@ -65,7 +74,7 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# Helper: split comma lists
+# Helper: split comma-separated URLs
 def _split(urls: str):
     return [u.strip() for u in urls.split(",") if u.strip()]
 
