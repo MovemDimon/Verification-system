@@ -1,6 +1,12 @@
 # tests/conftest.py
 
 import os, sys
+import pytest
+from app.db import Base, engine
+
+@pytest.fixture(scope="session", autouse=True)
+def create_test_db():
+    Base.metadata.create_all(bind=engine)
 
 # مسیر ریشه را اضافه می‌کنیم
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
