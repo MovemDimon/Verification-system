@@ -6,3 +6,8 @@ web3
 ton-client-py
 sqlalchemy
 python-dotenv
+pytest
+pytest-asyncio
+httpx
+fakeredis
+
