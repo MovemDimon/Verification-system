@@ -1,8 +1,7 @@
 fastapi
 uvicorn[standard]
 requests
-pydantic>=2.0.0
-pydantic-settings
+pydantic<2
 web3
 ton-client-py
 sqlalchemy
