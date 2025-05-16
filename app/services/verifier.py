@@ -1,17 +1,18 @@
+# app/services/verifier.py
+
 import json, logging
 from fastapi import HTTPException
 from app.config import settings
 from app.db import SessionLocal, Transaction, TxStatus
 import aioredis
 from enum import Enum
-import asyncio
 
 from app.blockchain.evm_client import verify_evm_tx
 from app.blockchain.ton_client import verify_ton_tx
 
 logger = logging.getLogger(__name__)
 
-# تابع تولید Redis – برای تست قابل override است
+# جدید: تابع جداگانه برای گرفتن Redis
 def get_redis():
     return aioredis.from_url(settings.REDIS_URL)
 
