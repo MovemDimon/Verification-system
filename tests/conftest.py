@@ -47,5 +47,5 @@ import pytest
 def fake_redis(monkeypatch):
     import fakeredis
     fake = fakeredis.FakeStrictRedis()
-    monkeypatch.setattr("app.verifier.redis", fake)
+    monkeypatch.setattr("app.services.verifier.redis", fake)
     return fake
