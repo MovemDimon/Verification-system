@@ -1,10 +1,10 @@
 import os
 import sys
-# اضافه کردن ریشه پروژه به path
+# اضافه کردن ریشهٔ پروژه به path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 
 import json
-from app.verifier import enqueue_verify
+from app.services.verifier import enqueue_verify
 from app.db import SessionLocal, Transaction, TxStatus
 
 def test_enqueue_and_db_insert(fake_redis):
