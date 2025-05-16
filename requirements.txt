@@ -1,5 +1,6 @@
 fastapi
 uvicorn[standard]
+aioredis
 requests
 pydantic<2
 web3
