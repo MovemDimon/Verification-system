@@ -68,9 +68,12 @@ class Settings(BaseSettings):
 
     @validator('MERCHANT_WALLET_TON')
     def validate_ton_address(cls, v):
-        if not v.startswith('EQ'):
-            raise ValueError('Invalid TON address')
+        if not (v.startswith('EQ') or v.startswith('UQ')):
+            raise ValueError('Invalid TON address format')
+        if len(v) != 48:
+            raise ValueError('Invalid TON address length')
         return v
+    
 
 settings = Settings()
 
