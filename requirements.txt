@@ -1,6 +1,6 @@
 fastapi
 uvicorn[standard]
-aioredis
+motor
 requests
 pydantic<2
 web3
@@ -11,4 +11,3 @@ pytest
 pytest-asyncio
 httpx
 fakeredis
-
