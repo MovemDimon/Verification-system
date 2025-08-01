@@ -1,13 +1,12 @@
 fastapi
 uvicorn[standard]
 motor
+httpx
 requests
 pydantic<2
 web3
 ton-client-py
-sqlalchemy
 python-dotenv
 pytest
 pytest-asyncio
 httpx
-fakeredis
