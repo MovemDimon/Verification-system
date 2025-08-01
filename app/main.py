@@ -16,7 +16,7 @@ class TransactionPayload(BaseModel):
     sender_wallet: str
     tx_hash: str
 
-@app.post('/transaction')
+@app.post('/api/v1/transaction')
 async def verify_transaction(
     payload: TransactionPayload,
     api_key: str = Header(...)
