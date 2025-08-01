@@ -12,5 +12,10 @@
       "dest": "app/main.py",
       "methods": ["POST"]
     }
-  ]
+  ],
+  "functions": {
+    "*.py": {
+      "maxDuration": 60
+    }
+  }
 }
