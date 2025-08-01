@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from app.services.verifier import verify
 from app.config import settings
 
-app = FastAPI(openapi_prefix="/api/v1")
+app = FastAPI()
 api_key_header = APIKeyHeader(name='X-API-KEY')
 
 class TransactionPayload(BaseModel):
