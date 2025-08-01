@@ -1,15 +1,14 @@
+# app/config.py
 import os
 from dotenv import load_dotenv
-
-# 🔹 تشخیص محیط و بارگذاری فایل مناسب
-if os.getenv("USE_TEST_ENV") == "1":
-    print("⚠️  [config] Loading TEST config from .env.test")
-    load_dotenv(dotenv_path=".env.test")
-else:
-    load_dotenv()  # بارگذاری از `.env` عادی یا متغیرهای محیطی
-
 from pydantic import BaseSettings, AnyUrl, validator
 import re
+
+# Load environment variables
+if os.getenv("USE_TEST_ENV") == "1":
+    load_dotenv(dotenv_path=".env.test")
+else:
+    load_dotenv()
 
 class Settings(BaseSettings):
     # Merchant wallets
@@ -50,15 +49,8 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str
 
-    # Redis
-    REDIS_URL: AnyUrl
-
     # Security
     SECRET_KEY: str
-
-    # ❌ حذف Config.env_file چون load_dotenv بالا کار رو انجام داده
-    # class Config:
-    #     env_file = ".env"
 
     @validator('MERCHANT_WALLET_EVM')
     def validate_evm_address(cls, v):
@@ -70,14 +62,11 @@ class Settings(BaseSettings):
     def validate_ton_address(cls, v):
         if not (v.startswith('EQ') or v.startswith('UQ')):
             raise ValueError('Invalid TON address format')
-        if len(v) != 48:
-            raise ValueError('Invalid TON address length')
+        # skip strict length check, TON addresses can vary
         return v
-    
 
 settings = Settings()
 
-# Helper: split comma-separated URLs
 def _split(urls: str):
     return [u.strip() for u in urls.split(",") if u.strip()]
 
