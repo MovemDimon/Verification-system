@@ -1,20 +1,12 @@
-# app/services/verifier.py
-
 import json, logging
-from fastapi import HTTPException
 from app.config import settings
-from app.db import SessionLocal, Transaction, TxStatus
-import aioredis
+from app.db import transactions
 from enum import Enum
 
 from app.blockchain.evm_client import verify_evm_tx
 from app.blockchain.ton_client import verify_ton_tx
 
 logger = logging.getLogger(__name__)
-
-# جدید: تابع جداگانه برای گرفتن Redis
-def get_redis():
-    return aioredis.from_url(settings.REDIS_URL)
 
 class NetworkEnum(str, Enum):
     ETH = 'Ethereum'
@@ -24,45 +16,56 @@ class NetworkEnum(str, Enum):
     OPT = 'Optimism'
     TON = 'TON'
 
-async def enqueue_verify(payload: dict):
-    redis = get_redis()
-    await redis.lpush("tx_queue", json.dumps(payload))
-
-async def get_cached(key: str):
-    redis = get_redis()
-    return await redis.get(key)
-
-async def set_cached(key: str, value: str, ttl: int = 60):
-    redis = get_redis()
-    await redis.set(key, value, ex=ttl)
-
 async def verify(payload: dict) -> dict:
     key = f"{payload['user_id']}_{payload['tx_hash']}"
-    cached = await get_cached(key)
-    if cached:
-        return json.loads(cached)
 
-    db = SessionLocal()
+    # چک کن ببینی قبلاً بررسی شده یا نه
+    existing_tx = await transactions.find_one({"idempotency_key": key})
+    if existing_tx and existing_tx.get("status") != "pending":
+        return {"status": existing_tx["status"], "tx_hash": payload["tx_hash"]}
+
+    # اگر نبود، تراکنش جدید رو ذخیره کن
+    if not existing_tx:
+        tx_data = {
+            "idempotency_key": key,
+            "user_id": payload["user_id"],
+            "tx_hash": payload["tx_hash"],
+            "network": payload["network"],
+            "sender_wallet": payload["sender_wallet"],
+            "amount": payload["amount"],
+            "status": "pending",
+            "attempts": 0
+        }
+        await transactions.insert_one(tx_data)
+
+    # تأیید مستقیم تراکنش
+    success = False
     try:
-        tx = db.query(Transaction).filter_by(idempotency_key=key).first()
-        if tx:
-            result = {'status': tx.status.value, 'tx_hash': payload['tx_hash']}
-            await set_cached(key, json.dumps(result))
-            return result
+        if payload["network"] == "TON":
+            success = verify_ton_tx(
+                tx_hash=payload["tx_hash"],
+                sender=payload["sender_wallet"],
+                amount=int(payload["amount"]),  # ⚠️ مقدار به ton بر حسب nano
+                merchant=settings.MERCHANT_WALLET_TON
+            )
+        else:
+            success = verify_evm_tx(
+                tx_hash=payload["tx_hash"],
+                sender=payload["sender_wallet"],
+                amount_usdt=payload["amount"],
+                merchant=settings.MERCHANT_WALLET_EVM,
+                confirmations=settings.TX_CONFIRMATIONS,
+                network=payload["network"]
+            )
+    except Exception as e:
+        logger.error(f"❌ Error during verification: {e}")
+        success = False
 
-        tx = Transaction(
-            idempotency_key=key,
-            user_id=payload['user_id'],
-            tx_hash=payload['tx_hash'],
-            network=payload['network'],
-            sender_wallet=payload['sender_wallet'],
-            amount=payload['amount'],
-            status=TxStatus.pending
-        )
-        db.add(tx)
-        db.commit()
+    status = "confirmed" if success else "failed"
 
-        await enqueue_verify(payload)
-        return {'status': 'pending', 'tx_hash': payload['tx_hash']}
-    finally:
-        db.close()
+    await transactions.update_one(
+        {"idempotency_key": key},
+        {"$set": {"status": status}}
+    )
+
+    return {"status": status, "tx_hash": payload["tx_hash"]}
