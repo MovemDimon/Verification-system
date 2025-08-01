@@ -1,4 +1,6 @@
-import time, asyncio
+# app/blockchain/evm_client.py
+import asyncio
+import time
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
 from web3.exceptions import TransactionNotFound
@@ -18,7 +20,6 @@ contract_abi = [
 ]
 
 async def wait_for_transfer_ws(tx_hash: str, sender: str, merchant: str, timeout: int, network: str) -> bool:
-    """Subscribe to Transfer events via WebSocket."""
     w3 = Web3(Web3.WebsocketProvider(get_ws_url(network)))
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
     contract = w3.eth.contract(address=Web3.toChecksumAddress(settings.USDT_CONTRACT_EVM), abi=contract_abi)
@@ -35,18 +36,22 @@ async def wait_for_transfer_ws(tx_hash: str, sender: str, merchant: str, timeout
         await asyncio.sleep(1)
     return False
 
-def verify_evm_tx(tx_hash: str, sender: str, amount_usdt: float, merchant: str, confirmations: int, network: str) -> bool:
-    """Atomic verification: first try WS subscription, fallback to HTTP polling."""
-    # WS-based first
+async def verify_evm_tx_async(
+    tx_hash: str,
+    sender: str,
+    amount_usdt: float,
+    merchant: str,
+    confirmations: int,
+    network: str
+) -> bool:
     try:
-        loop = asyncio.new_event_loop()
-        return loop.run_until_complete(
-            wait_for_transfer_ws(tx_hash, sender, merchant, settings.TX_TIMEOUT_SECONDS, network)
+        return await wait_for_transfer_ws(
+            tx_hash, sender, merchant,
+            settings.TX_TIMEOUT_SECONDS, network
         )
     except Exception:
         pass
 
-    # Fallback to HTTP polling
     w3 = Web3(Web3.HTTPProvider(get_working_rpc(network)))
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
     contract = w3.eth.contract(address=Web3.toChecksumAddress(settings.USDT_CONTRACT_EVM), abi=contract_abi)
@@ -61,11 +66,14 @@ def verify_evm_tx(tx_hash: str, sender: str, amount_usdt: float, merchant: str, 
         except TransactionNotFound:
             time.sleep(5)
             continue
+
         if receipt.status != 1:
             return False
+
         if w3.eth.blockNumber - receipt.blockNumber < confirmations:
             time.sleep(5)
             continue
+
         for log in receipt.logs:
             try:
                 ev = contract.events.Transfer().processLog(log)
@@ -77,5 +85,7 @@ def verify_evm_tx(tx_hash: str, sender: str, amount_usdt: float, merchant: str, 
                     return True
             except:
                 continue
+
         return False
+
     return False
