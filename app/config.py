@@ -1,4 +1,3 @@
-# app/config.py
 import os
 from dotenv import load_dotenv
 from pydantic import BaseSettings, AnyUrl, validator
