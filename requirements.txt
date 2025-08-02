@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
 motor
+pymongo[srv]>=4.7
 httpx
 requests
 pydantic<2
