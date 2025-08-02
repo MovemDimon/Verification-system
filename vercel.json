@@ -1,11 +1,6 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "app/main.py",
-      "use": "@vercel/python"
-    }
-  ],
+
   "routes": [
     {
       "src": "/api/v1/transaction",
@@ -13,6 +8,7 @@
       "methods": ["POST"]
     }
   ],
+
   "functions": {
     "app/**/*.py": {
       "runtime": "python3.11",
