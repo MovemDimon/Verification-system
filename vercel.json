@@ -1,16 +1,7 @@
 {
   "version": 2,
-
-  "routes": [
-    {
-      "src": "/api/v1/transaction",
-      "dest": "app/main.py",
-      "methods": ["POST"]
-    }
-  ],
-
   "functions": {
-    "app/**/*.py": {
+    "api/**/*.py": {
       "maxDuration": 60,
       "memory": 1024
     }
