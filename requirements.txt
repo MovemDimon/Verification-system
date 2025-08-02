@@ -7,6 +7,3 @@ pydantic<2
 web3
 ton-client-py
 python-dotenv
-pytest
-pytest-asyncio
-httpx
