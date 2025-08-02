@@ -11,18 +11,29 @@ async def verify_ton_tx_async(tx_hash: str, sender: str, amount: int, merchant: 
     async with httpx.AsyncClient(timeout=10) as client:
         while asyncio.get_event_loop().time() - start < settings.TX_TIMEOUT_SECONDS and attempts < 5:
             attempts += 1
-            params = {"account": merchant, "limit": 50, "to_lt": last_lt}
-            headers = {"X-API-Key": settings.TON_API_KEY}
+
+            params = {
+                "account": merchant,
+                "limit": 50,
+                "to_lt": last_lt
+            }
+
+            headers = {
+                "X-API-Key": settings.TON_API_KEY
+            }
+
             try:
-                resp = await client.post(
+                resp = await client.get(
                     f"{settings.TON_API_URL}getTransactions",
-                    json=params, headers=headers
+                    params=params,
+                    headers=headers
                 )
             except httpx.RequestError:
                 await asyncio.sleep(5)
                 continue
 
-            txs = resp.json().get('transactions', [])
+            data = resp.json()
+            txs = data.get('transactions', [])
             if not txs:
                 await asyncio.sleep(5)
                 continue
@@ -37,6 +48,6 @@ async def verify_ton_tx_async(tx_hash: str, sender: str, amount: int, merchant: 
                     ):
                         return True
 
-            last_lt = txs[-1]['utime']
+            last_lt = txs[-1].get('utime', last_lt)
 
     return False
