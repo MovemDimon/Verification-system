@@ -1,12 +1,14 @@
-# api/main.py سابق
+import logging
+import traceback
 from fastapi import FastAPI, Header, HTTPException
-from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel, Field
 from app.services.verifier import verify
 from app.config import settings
 
-app = FastAPI()
-api_key_header = APIKeyHeader(name='X-API-KEY')
+# Configure logging to show errors and tracebacks
+logging.basicConfig(level=logging.ERROR)
+
+app = FastAPI(debug=True)
 
 class TransactionPayload(BaseModel):
     user_id: str = Field(..., example="12345")
@@ -20,8 +22,20 @@ class TransactionPayload(BaseModel):
 @app.post('/api/v1/transaction')
 async def verify_transaction(
     payload: TransactionPayload,
-    api_key: str = Header(...)
+    api_key: str = Header(..., alias="api-key")
 ):
-    if api_key != settings.API_KEY:
-        raise HTTPException(status_code=403, detail="Invalid API Key")
-    return await verify(payload.dict())
+    try:
+        # Validate API Key
+        if api_key != settings.API_KEY:
+            raise HTTPException(status_code=403, detail="Invalid API Key")
+        # Perform verification
+        return await verify(payload.dict())
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (e.g., invalid API key)
+        raise
+    except Exception as e:
+        # Log full traceback for debugging
+        logging.error("Unhandled exception during transaction verification:\n%s", traceback.format_exc())
+        # Return generic internal error
+        raise HTTPException(status_code=500, detail="Internal Server Error")
