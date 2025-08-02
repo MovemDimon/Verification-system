@@ -1,4 +1,3 @@
-# app/main.py
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel, Field
