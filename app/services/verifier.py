@@ -1,10 +1,7 @@
-# app/services/verifier.py
 import logging
 from app.config import settings
 from app.db import transactions
 from enum import Enum
-from app.blockchain.evm_client import verify_evm_tx_async
-from app.blockchain.ton_client import verify_ton_tx_async
 
 logger = logging.getLogger(__name__)
 
@@ -18,13 +15,12 @@ class NetworkEnum(str, Enum):
 
 async def verify(payload: dict) -> dict:
     key = f"{payload['user_id']}_{payload['tx_hash']}"
-
     existing = await transactions.find_one({"idempotency_key": key})
     if existing and existing.get("status") != "pending":
         return {"status": existing["status"], "tx_hash": payload["tx_hash"]}
 
     if not existing:
-        tx_data = {
+        await transactions.insert_one({
             "idempotency_key": key,
             "user_id": payload["user_id"],
             "tx_hash": payload["tx_hash"],
@@ -33,12 +29,12 @@ async def verify(payload: dict) -> dict:
             "amount": payload["amount"],
             "status": "pending",
             "attempts": 0
-        }
-        await transactions.insert_one(tx_data)
+        })
 
     success = False
     try:
         if payload["network"] == "TON":
+            from app.blockchain.ton_client import verify_ton_tx_async  # Lazy import
             success = await verify_ton_tx_async(
                 tx_hash=payload["tx_hash"],
                 sender=payload["sender_wallet"],
@@ -46,6 +42,7 @@ async def verify(payload: dict) -> dict:
                 merchant=settings.MERCHANT_WALLET_TON
             )
         else:
+            from app.blockchain.evm_client import verify_evm_tx_async  # Lazy import
             success = await verify_evm_tx_async(
                 tx_hash=payload["tx_hash"],
                 sender=payload["sender_wallet"],
@@ -63,5 +60,4 @@ async def verify(payload: dict) -> dict:
         {"idempotency_key": key},
         {"$set": {"status": status}}
     )
-
     return {"status": status, "tx_hash": payload["tx_hash"]}
