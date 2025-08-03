@@ -1,6 +1,7 @@
 import logging
 import traceback
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from app.services.verifier import verify
 from app.config import settings
@@ -8,7 +9,16 @@ from app.config import settings
 # Configure logging to show errors and tracebacks
 logging.basicConfig(level=logging.ERROR)
 
+# Initialize FastAPI with debug mode
 app = FastAPI(debug=True)
+
+# Enable CORS to allow preflight requests and cross-origin access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],            # Or restrict to specific domains
+    allow_methods=["GET", "POST", "OPTIONS", "PUT", "DELETE"],
+    allow_headers=["*"],            # Or specify ['api-key', 'Content-Type']
+)
 
 class TransactionPayload(BaseModel):
     user_id: str = Field(..., example="12345")
